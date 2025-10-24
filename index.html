@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>Memory Match — Periodic Elements (MVP)</title>
+        <title>Memory Match — Periodic Elements (AI Adaptive, Full Table)</title>
         <style>
             :root {
                 --bg: #0f1724;
@@ -25,7 +25,7 @@
                 padding: 28px;
             }
             .app {
-                width: 980px;
+                width: 1100px;
                 max-width: 96%;
                 background: rgba(255, 255, 255, 0.03);
                 border-radius: 12px;
@@ -61,13 +61,19 @@
             .meta {
                 display: flex;
                 gap: 12px;
-                margin: 10px 0 16px;
+                margin: 10px 0 8px;
             }
             .meta div {
                 background: rgba(255, 255, 255, 0.03);
                 padding: 8px 10px;
                 border-radius: 8px;
                 font-size: 14px;
+            }
+            #ai-feedback {
+                color: #ffe66d;
+                font-style: italic;
+                margin: 8px 0;
+                text-align: center;
             }
             .board {
                 display: grid;
@@ -111,14 +117,14 @@
             }
             .symbol {
                 font-weight: 700;
-                font-size: 24px;
+                font-size: 22px;
             }
             .name {
-                font-size: 14px;
+                font-size: 13px;
                 text-align: center;
             }
             .hint {
-                font-size: 12px;
+                font-size: 11px;
                 opacity: 0.95;
             }
             footer {
@@ -130,18 +136,21 @@
                 font-size: 12px;
                 opacity: 0.9;
             }
-            @media (min-width: 700px) {
-                .board.level-1 {
+            @media (min-width: 900px) {
+                .board.cols-4 {
                     grid-template-columns: repeat(4, 1fr);
                 }
-                .board.level-2 {
-                    grid-template-columns: repeat(4, 1fr);
-                }
-                .board.level-3 {
+                .board.cols-6 {
                     grid-template-columns: repeat(6, 1fr);
                 }
+                .board.cols-8 {
+                    grid-template-columns: repeat(8, 1fr);
+                }
+                .board.cols-10 {
+                    grid-template-columns: repeat(10, 1fr);
+                }
             }
-            @media (max-width: 699px) {
+            @media (max-width: 899px) {
                 .board {
                     grid-template-columns: repeat(2, 1fr);
                 }
@@ -152,12 +161,16 @@
         <div class="app" role="application">
             <header>
                 <div>
-                    <h1>Memory Match — Periodic Elements (MVP)</h1>
-                    <div class="small">Pasangkan nama unsur dengan simbol / akrostik untuk menghafal golongan.</div>
+                    <h1>Memory Match — Periodic Elements (AI Adaptive, Full Table)</h1>
+                    <div class="small">Mode: All-unsur tersedia. AI akan menyesuaikan jumlah pasangan (DDA) agar pembelajaran tetap efektif.</div>
                 </div>
                 <div class="controls">
-                    <label class="small" for="group">Golongan</label>
-                    <select id="group"></select>
+                    <label class="small" for="mode">Mode</label>
+                    <select id="mode">
+                        <option value="all">All (progressive)</option>
+                        <option value="grouped">Per Golongan</option>
+                    </select>
+                    <select id="groupSelect" style="display: none;"></select>
                     <button id="startBtn">Mulai / Reset</button>
                 </div>
             </header>
@@ -169,101 +182,226 @@
                 <div>Waktu: <span id="time">00:00</span></div>
             </div>
 
+            <div id="ai-feedback">AI: Memantau performa kamu...</div>
+
             <main>
-                <div id="board" class="board level-1" aria-live="polite"></div>
+                <div id="board" class="board cols-6" aria-live="polite"></div>
             </main>
 
             <footer>
-                <div class="small">Petunjuk: Klik kartu untuk membalik. Cocokkan nama unsur dengan simbol/akrostik. MVP ini dibuat untuk tugas edukasi.</div>
+                <div class="small">Petunjuk: Klik kartu untuk membalik. Jika kesulitan, tunggu AI menyesuaikan level. Mode "All" akan menampilkan subset unsur yang meningkat seiring level (agar tidak menampilkan 236 kartu sekaligus).</div>
             </footer>
         </div>
 
         <script>
-            // Data: beberapa golongan dengan unsur contoh dan akrostik singkat
-            const GROUPS = {
-                "IA (Alkali)": [
-                    { id: "H", name: "Hidrogen", symbol: "H", hint: "(awal: H)" },
-                    { id: "Li", name: "Litium", symbol: "Li", hint: "(awal: L)" },
-                    { id: "Na", name: "Natrium", symbol: "Na", hint: "(awal: N)" },
-                    { id: "K", name: "Kalium", symbol: "K", hint: "(awal: K)" },
-                    { id: "Rb", name: "Rubidium", symbol: "Rb", hint: "(rb)" },
-                    { id: "Cs", name: "Sesium", symbol: "Cs", hint: "(cs)" },
-                ],
-                "IIA (Alkaline earth)": [
-                    { id: "Be", name: "Berilium", symbol: "Be", hint: "(Be)" },
-                    { id: "Mg", name: "Magnesium", symbol: "Mg", hint: "(Mg)" },
-                    { id: "Ca", name: "Kalsium", symbol: "Ca", hint: "(Ca)" },
-                    { id: "Sr", name: "Stronsium", symbol: "Sr", hint: "(Sr)" },
-                ],
-                IVA: [
-                    { id: "C", name: "Karbon", symbol: "C", hint: "(C)" },
-                    { id: "Si", name: "Silikon", symbol: "Si", hint: "(Si)" },
-                    { id: "Ge", name: "Germanium", symbol: "Ge", hint: "(Ge)" },
-                    { id: "Sn", name: "Timah", symbol: "Sn", hint: "(Sn)" },
-                    { id: "Pb", name: "Timbal", symbol: "Pb", hint: "(Pb)" },
-                ],
-            };
+            // === Data: Semua 118 unsur (symbol + name + groupNumber + category) ===
+            const PERIODIC_ELEMENTS = [
+                { z: 1, symbol: "H", name: "Hidrogen", group: 1, category: "Nonmetal" },
+                { z: 2, symbol: "He", name: "Helium", group: 18, category: "Noble gas" },
+                { z: 3, symbol: "Li", name: "Litium", group: 1, category: "Alkali metal" },
+                { z: 4, symbol: "Be", name: "Berilium", group: 2, category: "Alkaline earth" },
+                { z: 5, symbol: "B", name: "Boron", group: 13, category: "Metalloid" },
+                { z: 6, symbol: "C", name: "Karbon", group: 14, category: "Nonmetal" },
+                { z: 7, symbol: "N", name: "Nitrogen", group: 15, category: "Nonmetal" },
+                { z: 8, symbol: "O", name: "Oksigen", group: 16, category: "Nonmetal" },
+                { z: 9, symbol: "F", name: "Fluorin", group: 17, category: "Halogen" },
+                { z: 10, symbol: "Ne", name: "Neon", group: 18, category: "Noble gas" },
+                { z: 11, symbol: "Na", name: "Natrium", group: 1, category: "Alkali metal" },
+                { z: 12, symbol: "Mg", name: "Magnesium", group: 2, category: "Alkaline earth" },
+                { z: 13, symbol: "Al", name: "Aluminium", group: 13, category: "Post-transition" },
+                { z: 14, symbol: "Si", name: "Silikon", group: 14, category: "Metalloid" },
+                { z: 15, symbol: "P", name: "Fosfor", group: 15, category: "Nonmetal" },
+                { z: 16, symbol: "S", name: "Sulfur", group: 16, category: "Nonmetal" },
+                { z: 17, symbol: "Cl", name: "Klorin", group: 17, category: "Halogen" },
+                { z: 18, symbol: "Ar", name: "Argon", group: 18, category: "Noble gas" },
+                { z: 19, symbol: "K", name: "Kalium", group: 1, category: "Alkali metal" },
+                { z: 20, symbol: "Ca", name: "Kalsium", group: 2, category: "Alkaline earth" },
+                { z: 21, symbol: "Sc", name: "Skandium", group: 3, category: "Transition metal" },
+                { z: 22, symbol: "Ti", name: "Titanium", group: 4, category: "Transition metal" },
+                { z: 23, symbol: "V", name: "Vanadium", group: 5, category: "Transition metal" },
+                { z: 24, symbol: "Cr", name: "Kromium", group: 6, category: "Transition metal" },
+                { z: 25, symbol: "Mn", name: "Mangan", group: 7, category: "Transition metal" },
+                { z: 26, symbol: "Fe", name: "Besi", group: 8, category: "Transition metal" },
+                { z: 27, symbol: "Co", name: "Kobalt", group: 9, category: "Transition metal" },
+                { z: 28, symbol: "Ni", name: "Nikel", group: 10, category: "Transition metal" },
+                { z: 29, symbol: "Cu", name: "Tembaga", group: 11, category: "Transition metal" },
+                { z: 30, symbol: "Zn", name: "Seng", group: 12, category: "Transition metal" },
+                { z: 31, symbol: "Ga", name: "Galium", group: 13, category: "Post-transition" },
+                { z: 32, symbol: "Ge", name: "Germanium", group: 14, category: "Metalloid" },
+                { z: 33, symbol: "As", name: "Arsen", group: 15, category: "Metalloid" },
+                { z: 34, symbol: "Se", name: "Selenium", group: 16, category: "Nonmetal" },
+                { z: 35, symbol: "Br", name: "Bromin", group: 17, category: "Halogen" },
+                { z: 36, symbol: "Kr", name: "Krypton", group: 18, category: "Noble gas" },
+                { z: 37, symbol: "Rb", name: "Rubidium", group: 1, category: "Alkali metal" },
+                { z: 38, symbol: "Sr", name: "Stronsium", group: 2, category: "Alkaline earth" },
+                { z: 39, symbol: "Y", name: "Itrium", group: 3, category: "Transition metal" },
+                { z: 40, symbol: "Zr", name: "Zirkonium", group: 4, category: "Transition metal" },
+                { z: 41, symbol: "Nb", name: "Niobium", group: 5, category: "Transition metal" },
+                { z: 42, symbol: "Mo", name: "Molibdenum", group: 6, category: "Transition metal" },
+                { z: 43, symbol: "Tc", name: "Teknetium", group: 7, category: "Transition metal" },
+                { z: 44, symbol: "Ru", name: "Rutenium", group: 8, category: "Transition metal" },
+                { z: 45, symbol: "Rh", name: "Rodium", group: 9, category: "Transition metal" },
+                { z: 46, symbol: "Pd", name: "Paladium", group: 10, category: "Transition metal" },
+                { z: 47, symbol: "Ag", name: "Perak", group: 11, category: "Transition metal" },
+                { z: 48, symbol: "Cd", name: "Kadmium", group: 12, category: "Transition metal" },
+                { z: 49, symbol: "In", name: "Indium", group: 13, category: "Post-transition" },
+                { z: 50, symbol: "Sn", name: "Timah", group: 14, category: "Post-transition" },
+                { z: 51, symbol: "Sb", name: "Antimon", group: 15, category: "Metalloid" },
+                { z: 52, symbol: "Te", name: "Tellur", group: 16, category: "Metalloid" },
+                { z: 53, symbol: "I", name: "Iodin", group: 17, category: "Halogen" },
+                { z: 54, symbol: "Xe", name: "Xenon", group: 18, category: "Noble gas" },
+                { z: 55, symbol: "Cs", name: "Sesium", group: 1, category: "Alkali metal" },
+                { z: 56, symbol: "Ba", name: "Barium", group: 2, category: "Alkaline earth" },
+                { z: 57, symbol: "La", name: "Lantanum", group: 3, category: "Lanthanide" },
+                { z: 58, symbol: "Ce", name: "Serium", group: 3, category: "Lanthanide" },
+                { z: 59, symbol: "Pr", name: "Praseodimium", group: 3, category: "Lanthanide" },
+                { z: 60, symbol: "Nd", name: "Neodimium", group: 3, category: "Lanthanide" },
+                { z: 61, symbol: "Pm", name: "Prometium", group: 3, category: "Lanthanide" },
+                { z: 62, symbol: "Sm", name: "Samarium", group: 3, category: "Lanthanide" },
+                { z: 63, symbol: "Eu", name: "Europium", group: 3, category: "Lanthanide" },
+                { z: 64, symbol: "Gd", name: "Gadolinium", group: 3, category: "Lanthanide" },
+                { z: 65, symbol: "Tb", name: "Terbium", group: 3, category: "Lanthanide" },
+                { z: 66, symbol: "Dy", name: "Disprosium", group: 3, category: "Lanthanide" },
+                { z: 67, symbol: "Ho", name: "Holmium", group: 3, category: "Lanthanide" },
+                { z: 68, symbol: "Er", name: "Erbium", group: 3, category: "Lanthanide" },
+                { z: 69, symbol: "Tm", name: "Thulium", group: 3, category: "Lanthanide" },
+                { z: 70, symbol: "Yb", name: "Ytterbium", group: 3, category: "Lanthanide" },
+                { z: 71, symbol: "Lu", name: "Lutetium", group: 3, category: "Lanthanide" },
+                { z: 72, symbol: "Hf", name: "Hafnium", group: 4, category: "Transition metal" },
+                { z: 73, symbol: "Ta", name: "Tantalum", group: 5, category: "Transition metal" },
+                { z: 74, symbol: "W", name: "Tungsten", group: 6, category: "Transition metal" },
+                { z: 75, symbol: "Re", name: "Rhenium", group: 7, category: "Transition metal" },
+                { z: 76, symbol: "Os", name: "Osmium", group: 8, category: "Transition metal" },
+                { z: 77, symbol: "Ir", name: "Iridium", group: 9, category: "Transition metal" },
+                { z: 78, symbol: "Pt", name: "Platinum", group: 10, category: "Transition metal" },
+                { z: 79, symbol: "Au", name: "Emas", group: 11, category: "Transition metal" },
+                { z: 80, symbol: "Hg", name: "Raksa", group: 12, category: "Transition metal" },
+                { z: 81, symbol: "Tl", name: "Timbal(III)", group: 13, category: "Post-transition" },
+                { z: 82, symbol: "Pb", name: "Timbal", group: 14, category: "Post-transition" },
+                { z: 83, symbol: "Bi", name: "Bismut", group: 15, category: "Post-transition" },
+                { z: 84, symbol: "Po", name: "Polonium", group: 16, category: "Post-transition" },
+                { z: 85, symbol: "At", name: "Astatin", group: 17, category: "Halogen" },
+                { z: 86, symbol: "Rn", name: "Radon", group: 18, category: "Noble gas" },
+                { z: 87, symbol: "Fr", name: "Francium", group: 1, category: "Alkali metal" },
+                { z: 88, symbol: "Ra", name: "Radium", group: 2, category: "Alkaline earth" },
+                { z: 89, symbol: "Ac", name: "Aktinium", group: 3, category: "Actinide" },
+                { z: 90, symbol: "Th", name: "Torium", group: 3, category: "Actinide" },
+                { z: 91, symbol: "Pa", name: "Protaktinium", group: 3, category: "Actinide" },
+                { z: 92, symbol: "U", name: "Uranium", group: 3, category: "Actinide" },
+                { z: 93, symbol: "Np", name: "Neptunium", group: 3, category: "Actinide" },
+                { z: 94, symbol: "Pu", name: "Plutonium", group: 3, category: "Actinide" },
+                { z: 95, symbol: "Am", name: "Amerisium", group: 3, category: "Actinide" },
+                { z: 96, symbol: "Cm", name: "Kuriu", group: 3, category: "Actinide" },
+                { z: 97, symbol: "Bk", name: "Berkelium", group: 3, category: "Actinide" },
+                { z: 98, symbol: "Cf", name: "Kalifornium", group: 3, category: "Actinide" },
+                { z: 99, symbol: "Es", name: "Einsteinium", group: 3, category: "Actinide" },
+                { z: 100, symbol: "Fm", name: "Fermium", group: 3, category: "Actinide" },
+                { z: 101, symbol: "Md", name: "Mendelevium", group: 3, category: "Actinide" },
+                { z: 102, symbol: "No", name: "Nobelium", group: 3, category: "Actinide" },
+                { z: 103, symbol: "Lr", name: "Lawrensium", group: 3, category: "Actinide" },
+                { z: 104, symbol: "Rf", name: "Rutherfordium", group: 4, category: "Transition metal" },
+                { z: 105, symbol: "Db", name: "Dubnium", group: 5, category: "Transition metal" },
+                { z: 106, symbol: "Sg", name: "Seaborgium", group: 6, category: "Transition metal" },
+                { z: 107, symbol: "Bh", name: "Bohrium", group: 7, category: "Transition metal" },
+                { z: 108, symbol: "Hs", name: "Hassium", group: 8, category: "Transition metal" },
+                { z: 109, symbol: "Mt", name: "Meitnerium", group: 9, category: "Unknown" },
+                { z: 110, symbol: "Ds", name: "Darmstadtium", group: 10, category: "Unknown" },
+                { z: 111, symbol: "Rg", name: "Roentgenium", group: 11, category: "Unknown" },
+                { z: 112, symbol: "Cn", name: "Copernicium", group: 12, category: "Unknown" },
+                { z: 113, symbol: "Nh", name: "Nihonium", group: 13, category: "Unknown" },
+                { z: 114, symbol: "Fl", name: "Flerovium", group: 14, category: "Unknown" },
+                { z: 115, symbol: "Mc", name: "Moscovium", group: 15, category: "Unknown" },
+                { z: 116, symbol: "Lv", name: "Livermorium", group: 16, category: "Unknown" },
+                { z: 117, symbol: "Ts", name: "Tennessine", group: 17, category: "Unknown" },
+                { z: 118, symbol: "Og", name: "Oganesson", group: 18, category: "Unknown" },
+            ];
 
             // App state
-            let level = 1;
-            let moves = 0;
-            let matched = 0;
-            let totalPairs = 0;
-            let firstCard = null;
-            let secondCard = null;
-            let lockBoard = false;
-            let timerInterval = null;
-            let seconds = 0;
+            let level = 1,
+                moves = 0,
+                matched = 0,
+                totalPairs = 0,
+                firstCard = null,
+                secondCard = null,
+                lockBoard = false;
+            let timerInterval = null,
+                seconds = 0;
 
-            // DOM
             const boardEl = document.getElementById("board");
-            const groupSelect = document.getElementById("group");
+            const modeEl = document.getElementById("mode");
+            const groupEl = document.getElementById("groupSelect");
             const startBtn = document.getElementById("startBtn");
             const levelEl = document.getElementById("level");
             const movesEl = document.getElementById("moves");
             const matchedEl = document.getElementById("matched");
             const totalPairsEl = document.getElementById("totalPairs");
             const timeEl = document.getElementById("time");
+            const aiFeedback = document.getElementById("ai-feedback");
 
-            // populate groups
-            Object.keys(GROUPS).forEach((k) => {
+            // Build group listing for 'Per Golongan' mode (by category)
+            const categories = Array.from(new Set(PERIODIC_ELEMENTS.map((e) => e.category))).sort();
+            categories.unshift("All");
+            categories.forEach((cat) => {
                 const opt = document.createElement("option");
-                opt.value = k;
-                opt.textContent = k;
-                groupSelect.appendChild(opt);
+                opt.value = cat;
+                opt.textContent = cat;
+                groupEl.appendChild(opt);
             });
+
+            modeEl.addEventListener("change", () => {
+                if (modeEl.value === "grouped") groupEl.style.display = "inline-block";
+                else groupEl.style.display = "none";
+                startGame();
+            });
+            groupEl.addEventListener("change", startGame);
 
             function startGame() {
                 resetState();
-                const groupName = groupSelect.value || Object.keys(GROUPS)[0];
-                const elements = GROUPS[groupName].slice();
+                // determine available elements based on mode
+                let available = PERIODIC_ELEMENTS.slice();
+                if (modeEl.value === "grouped" && groupEl.value && groupEl.value !== "All") {
+                    available = PERIODIC_ELEMENTS.filter((e) => e.category === groupEl.value);
+                }
 
-                // choose number of pairs based on level and available elements
-                const desiredPairs = Math.min(elements.length, level === 1 ? 4 : level === 2 ? 6 : elements.length);
-                // shuffle and pick
-                const shuffledElements = shuffle(elements).slice(0, desiredPairs);
 
-                // create deck: for each element we create two card types: 'name' and 'symbol' (or hint)
+                // DDA rule: choose number of pairs depending on level, but never exceed available
+                // base_pairs increases per level: level1=6, level2=12, level3=20, etc. (progressive)
+
+                // const base = 6;
+                // const perLevel = 6;
+                // const desiredPairs = Math.min(available.length, base + (level - 1) * perLevel);
+
+                const base = 4;       // level 1 → 4 pasangan (8 kartu)
+                const perLevel = 2;   // naik 2 pasangan per level
+                const desiredPairs = Math.min(available.length, base + (level - 1) * perLevel);
+
+                // const difficultyScale = Math.max(1, level);
+                // const desiredPairs = Math.min(available.length, 4 + difficultyScale * 2);
+
+
+                // build deck: for each selected element create 'name' and 'symbol' cards
+                const selected = shuffle(available).slice(0, desiredPairs);
                 const deck = [];
-                shuffledElements.forEach((el) => {
-                    deck.push({ uid: el.id + "-A", pairId: el.id, type: "name", content: el.name, hint: el.hint });
-                    deck.push({ uid: el.id + "-B", pairId: el.id, type: "symbol", content: el.symbol, hint: el.hint });
+                selected.forEach((el) => {
+                    deck.push({ uid: el.z + "-A", pairId: el.z, type: "name", content: el.name, symbol: el.symbol });
+                    deck.push({ uid: el.z + "-B", pairId: el.z, type: "symbol", content: el.symbol, symbol: el.symbol });
                 });
 
                 totalPairs = desiredPairs;
                 totalPairsEl.textContent = totalPairs;
                 matchedEl.textContent = matched;
-
                 const shuffledDeck = shuffle(deck);
+
+                // set responsive grid columns by deck size
+                const cols = Math.min(10, Math.max(4, Math.ceil(Math.sqrt(shuffledDeck.length))));
+                boardEl.className = "board cols-" + cols;
+
                 renderBoard(shuffledDeck);
                 startTimer();
             }
 
             function renderBoard(deck) {
                 boardEl.innerHTML = "";
-                boardEl.className = "board level-" + Math.min(level, 3);
-                // set grid columns based on pairs
-                // CSS handles responsive; just create card elements
                 deck.forEach((card) => {
                     const wrapper = document.createElement("div");
                     wrapper.className = "card";
@@ -271,29 +409,23 @@
                     wrapper.dataset.pairId = card.pairId;
                     wrapper.innerHTML = `
           <div class="card-inner">
-            <div class="face front small">?
-            </div>
+            <div class="face front small">?</div>
             <div class="face back">
               <div>
-                <div class="symbol">${escapeHtml(card.type === "symbol" ? card.content : card.pairId)}</div>
+                <div class="symbol">${escapeHtml(card.type === "symbol" ? card.content : card.symbol)}</div>
                 <div class="name">${escapeHtml(card.type === "name" ? card.content : card.type === "symbol" ? card.content : card.content)}</div>
-                <div class="hint small">${escapeHtml(card.type === "name" ? card.hint : card.hint)}</div>
+                <div class="hint small">${escapeHtml(card.type === "name" ? "" : "Simbol")}</div>
               </div>
             </div>
-          </div>
-        `;
-                    wrapper.addEventListener("click", () => onCardClick(wrapper, card));
+          </div>`;
+                    wrapper.addEventListener("click", () => onCardClick(wrapper));
                     boardEl.appendChild(wrapper);
                 });
             }
 
-            function onCardClick(wrapper, card) {
-                if (lockBoard) return;
-                if (wrapper.classList.contains("matched")) return;
-                if (wrapper === firstCard) return;
-
+            function onCardClick(wrapper) {
+                if (lockBoard || wrapper.classList.contains("matched") || wrapper === firstCard) return;
                 flip(wrapper);
-
                 if (!firstCard) {
                     firstCard = wrapper;
                     return;
@@ -308,16 +440,13 @@
                 const a = firstCard.dataset.pairId;
                 const b = secondCard.dataset.pairId;
                 if (a === b) {
-                    // match
                     firstCard.classList.add("matched");
                     secondCard.classList.add("matched");
                     matched++;
                     matchedEl.textContent = matched;
                     firstCard = null;
                     secondCard = null;
-                    if (matched === totalPairs) {
-                        winLevel();
-                    }
+                    if (matched === totalPairs) winLevel();
                 } else {
                     lockBoard = true;
                     setTimeout(() => {
@@ -340,19 +469,33 @@
             function winLevel() {
                 stopTimer();
                 setTimeout(() => {
-                    alert(`Selamat! Kamu menyelesaikan level ${level} dengan ${moves} langkah dan waktu ${formatTime(seconds)}.`);
-                    // advance level up to 3 for MVP
-                    if (level < 3) {
-                        level++;
-                        levelEl.textContent = level;
-                        startGame();
-                    } else {
-                        // reset to level 1
-                        level = 1;
-                        levelEl.textContent = level;
-                        startGame();
-                    }
+                    // show summary
+                    const msg = `Selamat! Kamu menyelesaikan level ${level} dengan ${moves} langkah dan waktu ${formatTime(seconds)}.`;
+                    // compute efficiency and let AI decide
+                    applyAdaptiveAI();
+                    // show short toast-like message (non-blocking)
+                    aiFeedback.textContent = aiFeedback.textContent + " — " + msg;
                 }, 200);
+            }
+
+            function applyAdaptiveAI() {
+                // efficiency formula: matched pairs times factor over moves + time
+                const efficiency = (matched * 10) / (Math.max(1, moves) + seconds / 10);
+                let message = "";
+                // adjust threshold adaptively based on board size
+                if (efficiency > 3.5 && level < 10) {
+                    level++;
+                    message = "AI: Hebat! Aku naikkan level untuk tantangan lebih.";
+                } else if (efficiency < 1.2 && level > 1) {
+                    level--;
+                    message = "AI: Tenang, aku turunkan level supaya lebih mudah.";
+                } else {
+                    message = "AI: Stabil — lanjutkan latihan.";
+                }
+                aiFeedback.textContent = message + ` (efisiensi: ${efficiency.toFixed(2)})`;
+                levelEl.textContent = level;
+                // small delay so player can read message, then start next
+                setTimeout(startGame, 1200);
             }
 
             function resetState() {
@@ -366,6 +509,7 @@
                 matched = 0;
                 movesEl.textContent = moves;
                 matchedEl.textContent = matched;
+                aiFeedback.textContent = "AI: Memantau performa kamu...";
             }
 
             function startTimer() {
@@ -380,14 +524,12 @@
             function stopTimer() {
                 clearInterval(timerInterval);
             }
-
             function formatTime(s) {
                 const m = Math.floor(s / 60);
                 const sec = s % 60;
                 return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
             }
 
-            // utilities
             function shuffle(a) {
                 const arr = a.slice();
                 for (let i = arr.length - 1; i > 0; i--) {
@@ -400,13 +542,9 @@
                 return String(t).replace(/[&<>\"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] || c));
             }
 
-            // events
-            startBtn.addEventListener("click", () => startGame());
-            groupSelect.addEventListener("change", () => startGame());
-
-            // initialize
+            startBtn.addEventListener("click", startGame);
             levelEl.textContent = level;
-            // auto-start
+            // initial populate
             startGame();
         </script>
     </body>

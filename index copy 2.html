@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="id">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Memory Match — Periodic Elements (AI Adaptive)</title>
+        <style>
+            :root {
+                --bg: #0f1724;
+                --card: #e6eef8;
+                --accent: #60a5fa;
+            }
+            * {
+                box-sizing: border-box;
+                font-family: Inter, ui-sans-serif, system-ui, Segoe UI, Roboto, "Helvetica Neue", Arial;
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                background: linear-gradient(180deg, #071029 0%, #092033 100%);
+                color: var(--card);
+                display: flex;
+                align-items: flex-start;
+                justify-content: center;
+                padding: 28px;
+            }
+            .app {
+                width: 980px;
+                max-width: 96%;
+                background: rgba(255, 255, 255, 0.03);
+                border-radius: 12px;
+                padding: 18px;
+                box-shadow: 0 8px 30px rgba(2, 6, 23, 0.6);
+            }
+            header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+            h1 {
+                font-size: 18px;
+                margin: 0;
+                color: #dbeafe;
+            }
+            .controls {
+                margin-left: auto;
+                display: flex;
+                gap: 8px;
+                align-items: center;
+            }
+            select,
+            button {
+                padding: 8px 10px;
+                border-radius: 8px;
+                border: 0;
+                background: rgba(255, 255, 255, 0.06);
+                color: var(--card);
+                cursor: pointer;
+            }
+            .meta {
+                display: flex;
+                gap: 12px;
+                margin: 10px 0 16px;
+            }
+            .meta div {
+                background: rgba(255, 255, 255, 0.03);
+                padding: 8px 10px;
+                border-radius: 8px;
+                font-size: 14px;
+            }
+            .board {
+                display: grid;
+                gap: 10px;
+                justify-items: stretch;
+            }
+            .card {
+                width: 100%;
+                aspect-ratio: 3/4;
+                perspective: 1000px;
+            }
+            .card-inner {
+                position: relative;
+                width: 100%;
+                height: 100%;
+                transform-style: preserve-3d;
+                transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1);
+            }
+            .card.flipped .card-inner {
+                transform: rotateY(180deg);
+            }
+            .face {
+                position: absolute;
+                inset: 0;
+                border-radius: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                backface-visibility: hidden;
+                padding: 10px;
+            }
+            .front {
+                background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.02));
+                border: 1px dashed rgba(255, 255, 255, 0.03);
+                color: #dbeafe;
+            }
+            .back {
+                background: linear-gradient(180deg, var(--accent), #2563eb);
+                color: white;
+                transform: rotateY(180deg);
+            }
+            .symbol {
+                font-weight: 700;
+                font-size: 24px;
+            }
+            .name {
+                font-size: 14px;
+                text-align: center;
+            }
+            .hint {
+                font-size: 12px;
+                opacity: 0.95;
+            }
+            footer {
+                margin-top: 14px;
+                color: #cbd5e1;
+                font-size: 13px;
+            }
+            .small {
+                font-size: 12px;
+                opacity: 0.9;
+            }
+            @media (min-width: 700px) {
+                .board.level-1 {
+                    grid-template-columns: repeat(4, 1fr);
+                }
+                .board.level-2 {
+                    grid-template-columns: repeat(4, 1fr);
+                }
+                .board.level-3 {
+                    grid-template-columns: repeat(6, 1fr);
+                }
+            }
+            @media (max-width: 699px) {
+                .board {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
+            #ai-feedback {
+                color: #ffe66d;
+                font-style: italic;
+                margin-top: 8px;
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="app" role="application">
+            <header>
+                <div>
+                    <h1>Memory Match — Periodic Elements (AI Adaptive)</h1>
+                    <div class="small">Pasangkan nama unsur dengan simbol / akrostik untuk menghafal golongan.</div>
+                </div>
+                <div class="controls">
+                    <label class="small" for="group">Golongan</label>
+                    <select id="group"></select>
+                    <button id="startBtn">Mulai / Reset</button>
+                </div>
+            </header>
+
+            <div class="meta">
+                <div>Level: <span id="level">1</span></div>
+                <div>Moves: <span id="moves">0</span></div>
+                <div>Matched: <span id="matched">0</span>/<span id="totalPairs">0</span></div>
+                <div>Waktu: <span id="time">00:00</span></div>
+            </div>
+
+            <div id="ai-feedback">AI: Memantau performa kamu...</div>
+            <main>
+                <div id="board" class="board level-1" aria-live="polite"></div>
+            </main>
+
+            <footer>
+                <div class="small">Petunjuk: Klik kartu untuk membalik. Cocokkan nama unsur dengan simbol/akrostik. Sistem AI akan menyesuaikan kesulitan otomatis.</div>
+            </footer>
+        </div>
+
+        <script>
+            const GROUPS = {
+                "IA (Alkali)": [
+                    { id: "H", name: "Hidrogen", symbol: "H", hint: "(awal: H)" },
+                    { id: "Li", name: "Litium", symbol: "Li", hint: "(awal: L)" },
+                    { id: "Na", name: "Natrium", symbol: "Na", hint: "(awal: N)" },
+                    { id: "K", name: "Kalium", symbol: "K", hint: "(awal: K)" },
+                    { id: "Rb", name: "Rubidium", symbol: "Rb", hint: "(Rb)" },
+                    { id: "Cs", name: "Sesium", symbol: "Cs", hint: "(Cs)" },
+                ],
+                "IIA (Alkaline earth)": [
+                    { id: "Be", name: "Berilium", symbol: "Be", hint: "(Be)" },
+                    { id: "Mg", name: "Magnesium", symbol: "Mg", hint: "(Mg)" },
+                    { id: "Ca", name: "Kalsium", symbol: "Ca", hint: "(Ca)" },
+                    { id: "Sr", name: "Stronsium", symbol: "Sr", hint: "(Sr)" },
+                    { id: "Ba", name: "Barium", symbol: "Ba", hint: "(Ba)" },
+                ],
+                IVA: [
+                    { id: "C", name: "Karbon", symbol: "C", hint: "(C)" },
+                    { id: "Si", name: "Silikon", symbol: "Si", hint: "(Si)" },
+                    { id: "Ge", name: "Germanium", symbol: "Ge", hint: "(Ge)" },
+                    { id: "Sn", name: "Timah", symbol: "Sn", hint: "(Sn)" },
+                    { id: "Pb", name: "Timbal", symbol: "Pb", hint: "(Pb)" },
+                ],
+            };
+
+            let level = 1,
+                moves = 0,
+                matched = 0,
+                totalPairs = 0,
+                firstCard = null,
+                secondCard = null,
+                lockBoard = false;
+            let timerInterval = null,
+                seconds = 0;
+
+            const boardEl = document.getElementById("board");
+            const groupSelect = document.getElementById("group");
+            const startBtn = document.getElementById("startBtn");
+            const levelEl = document.getElementById("level");
+            const movesEl = document.getElementById("moves");
+            const matchedEl = document.getElementById("matched");
+            const totalPairsEl = document.getElementById("totalPairs");
+            const timeEl = document.getElementById("time");
+            const aiFeedback = document.getElementById("ai-feedback");
+
+            Object.keys(GROUPS).forEach((k) => {
+                const opt = document.createElement("option");
+                opt.value = k;
+                opt.textContent = k;
+                groupSelect.appendChild(opt);
+            });
+
+            function startGame() {
+                resetState();
+                const groupName = groupSelect.value || Object.keys(GROUPS)[0];
+                const elements = GROUPS[groupName].slice();
+                const desiredPairs = Math.min(elements.length, level === 1 ? 4 : level === 2 ? 6 : elements.length);
+                const shuffledElements = shuffle(elements).slice(0, desiredPairs);
+
+                const deck = [];
+                shuffledElements.forEach((el) => {
+                    deck.push({ uid: el.id + "-A", pairId: el.id, type: "name", content: el.name, hint: el.hint });
+                    deck.push({ uid: el.id + "-B", pairId: el.id, type: "symbol", content: el.symbol, hint: el.hint });
+                });
+
+                totalPairs = desiredPairs;
+                totalPairsEl.textContent = totalPairs;
+                matchedEl.textContent = matched;
+
+                const shuffledDeck = shuffle(deck);
+                renderBoard(shuffledDeck);
+                startTimer();
+            }
+
+            function renderBoard(deck) {
+                boardEl.innerHTML = "";
+                boardEl.className = "board level-" + Math.min(level, 3);
+                deck.forEach((card) => {
+                    const wrapper = document.createElement("div");
+                    wrapper.className = "card";
+                    wrapper.dataset.uid = card.uid;
+                    wrapper.dataset.pairId = card.pairId;
+                    wrapper.innerHTML = `
+          <div class="card-inner">
+            <div class="face front small">?</div>
+            <div class="face back">
+              <div>
+                <div class="symbol">${escapeHtml(card.type === "symbol" ? card.content : card.pairId)}</div>
+                <div class="name">${escapeHtml(card.type === "name" ? card.content : card.content)}</div>
+                <div class="hint small">${escapeHtml(card.hint)}</div>
+              </div>
+            </div>
+          </div>`;
+                    wrapper.addEventListener("click", () => onCardClick(wrapper, card));
+                    boardEl.appendChild(wrapper);
+                });
+            }
+
+            function onCardClick(wrapper, card) {
+                if (lockBoard || wrapper.classList.contains("matched") || wrapper === firstCard) return;
+                flip(wrapper);
+                if (!firstCard) {
+                    firstCard = wrapper;
+                    return;
+                }
+                secondCard = wrapper;
+                moves++;
+                movesEl.textContent = moves;
+                checkForMatch();
+            }
+
+            function checkForMatch() {
+                const a = firstCard.dataset.pairId;
+                const b = secondCard.dataset.pairId;
+                if (a === b) {
+                    firstCard.classList.add("matched");
+                    secondCard.classList.add("matched");
+                    matched++;
+                    matchedEl.textContent = matched;
+                    firstCard = null;
+                    secondCard = null;
+                    if (matched === totalPairs) winLevel();
+                } else {
+                    lockBoard = true;
+                    setTimeout(() => {
+                        unflip(firstCard);
+                        unflip(secondCard);
+                        firstCard = null;
+                        secondCard = null;
+                        lockBoard = false;
+                    }, 700);
+                }
+            }
+
+            function flip(el) {
+                el.classList.add("flipped");
+            }
+            function unflip(el) {
+                el.classList.remove("flipped");
+            }
+
+            function winLevel() {
+                stopTimer();
+                setTimeout(() => {
+                    alert(`Selamat! Kamu menyelesaikan level ${level} dengan ${moves} langkah dan waktu ${formatTime(seconds)}.`);
+                    applyAdaptiveAI();
+                }, 200);
+            }
+
+            // === AI Adaptif (Dynamic Difficulty Adjustment) ===
+            function applyAdaptiveAI() {
+                const efficiency = (matched * 10) / (moves + seconds / 10);
+                let message = "";
+                if (efficiency > 3.5 && level < 3) {
+                    level++;
+                    message = "AI: Hebat! Kamu cepat dan akurat, level dinaikkan 💪";
+                } else if (efficiency < 1.5 && level > 1) {
+                    level--;
+                    message = "AI: Tenang, aku bantu kurangi kesulitan dulu 😊";
+                } else {
+                    message = "AI: Stabil, pertahankan performamu 🔁";
+                }
+                aiFeedback.textContent = message;
+                levelEl.textContent = level;
+                startGame();
+            }
+
+            function resetState() {
+                clearInterval(timerInterval);
+                seconds = 0;
+                timeEl.textContent = "00:00";
+                firstCard = null;
+                secondCard = null;
+                lockBoard = false;
+                moves = 0;
+                matched = 0;
+                movesEl.textContent = moves;
+                matchedEl.textContent = matched;
+            }
+
+            function startTimer() {
+                clearInterval(timerInterval);
+                seconds = 0;
+                timeEl.textContent = formatTime(seconds);
+                timerInterval = setInterval(() => {
+                    seconds++;
+                    timeEl.textContent = formatTime(seconds);
+                }, 1000);
+            }
+
+            function stopTimer() {
+                clearInterval(timerInterval);
+            }
+
+            function formatTime(s) {
+                const m = Math.floor(s / 60);
+                const sec = s % 60;
+                return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+            }
+
+            function shuffle(a) {
+                const arr = a.slice();
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            }
+
+            function escapeHtml(t) {
+                return String(t).replace(/[&<>\"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] || c));
+            }
+
+            startBtn.addEventListener("click", startGame);
+            groupSelect.addEventListener("change", startGame);
+
+            levelEl.textContent = level;
+            startGame();
+        </script>
+    </body>
+</html>
