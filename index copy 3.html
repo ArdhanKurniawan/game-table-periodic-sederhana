@@ -3,57 +3,94 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>Memory Match — Periodic Elements (AI Adaptive, Bootstrap, Full Data)</title>
-
-        <!-- Bootstrap CSS -->
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-        <!-- jQuery -->
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        <!-- Bootstrap JS -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
+        <title>Memory Match — Periodic Elements (AI Adaptive, Full Table)</title>
         <style>
+            :root {
+                --bg: #0f1724;
+                --card: #e6eef8;
+                --accent: #60a5fa;
+            }
+            * {
+                box-sizing: border-box;
+                font-family: Inter, ui-sans-serif, system-ui, Segoe UI, Roboto, "Helvetica Neue", Arial;
+            }
             body {
+                margin: 0;
+                min-height: 100vh;
                 background: linear-gradient(180deg, #071029 0%, #092033 100%);
-                color: #fff;
-                font-family: "Inter", sans-serif;
+                color: var(--card);
+                display: flex;
+                align-items: flex-start;
+                justify-content: center;
+                padding: 28px;
             }
             .app {
-                width: 95%;
-                max-width: 1100px;
-                margin: 20px auto;
-                padding: 20px;
-                background: rgba(255, 255, 255, 0.05);
+                width: 1100px;
+                max-width: 96%;
+                background: rgba(255, 255, 255, 0.03);
                 border-radius: 12px;
-                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+                padding: 18px;
+                box-shadow: 0 8px 30px rgba(2, 6, 23, 0.6);
+            }
+            header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+            h1 {
+                font-size: 18px;
+                margin: 0;
+                color: #dbeafe;
+            }
+            .controls {
+                margin-left: auto;
+                display: flex;
+                gap: 8px;
+                align-items: center;
+            }
+            select,
+            button {
+                padding: 8px 10px;
+                border-radius: 8px;
+                border: 0;
+                background: rgba(255, 255, 255, 0.06);
+                color: var(--card);
+                cursor: pointer;
+            }
+            .meta {
+                display: flex;
+                gap: 12px;
+                margin: 10px 0 8px;
+            }
+            .meta div {
+                background: rgba(255, 255, 255, 0.03);
+                padding: 8px 10px;
+                border-radius: 8px;
+                font-size: 14px;
             }
             #ai-feedback {
                 color: #ffe66d;
                 font-style: italic;
+                margin: 8px 0;
                 text-align: center;
-                margin: 10px 0;
             }
             .board {
                 display: grid;
                 gap: 10px;
                 justify-items: stretch;
             }
-            .card:hover {
-                transform: scale(1.05);
-                transition: 0.2s;
-            }
-
             .card {
+                width: 100%;
                 aspect-ratio: 3/4;
                 perspective: 1000px;
-                cursor: pointer;
             }
             .card-inner {
                 position: relative;
                 width: 100%;
                 height: 100%;
                 transform-style: preserve-3d;
-                transition: transform 0.45s;
+                transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1);
             }
             .card.flipped .card-inner {
                 transform: rotateY(180deg);
@@ -69,13 +106,13 @@
                 padding: 10px;
             }
             .front {
-                /* background: rgba(255, 255, 255, 0.08); */
-                background: rgba(30, 41, 59, 0.8); /* warna gelap semi-transparan */
-                border: 1px dashed rgba(255, 255, 255, 0.15);
-                color: #ffffff;
+                background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.02));
+                border: 1px dashed rgba(255, 255, 255, 0.03);
+                color: #dbeafe;
             }
             .back {
-                color: rgb(5, 1, 1);
+                background: linear-gradient(180deg, var(--accent), #2563eb);
+                color: white;
                 transform: rotateY(180deg);
             }
             .symbol {
@@ -86,45 +123,59 @@
                 font-size: 13px;
                 text-align: center;
             }
+            .hint {
+                font-size: 11px;
+                opacity: 0.95;
+            }
+            footer {
+                margin-top: 14px;
+                color: #cbd5e1;
+                font-size: 13px;
+            }
             .small {
                 font-size: 12px;
                 opacity: 0.9;
             }
+            @media (min-width: 900px) {
+                .board.cols-4 {
+                    grid-template-columns: repeat(4, 1fr);
+                }
+                .board.cols-6 {
+                    grid-template-columns: repeat(6, 1fr);
+                }
+                .board.cols-8 {
+                    grid-template-columns: repeat(8, 1fr);
+                }
+                .board.cols-10 {
+                    grid-template-columns: repeat(10, 1fr);
+                }
+            }
+            @media (max-width: 899px) {
+                .board {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
         </style>
     </head>
     <body>
-        <div class="app">
-            <header class="mb-3 text-center">
-                <h1>Memory Match — Periodic Elements (AI Adaptive)</h1>
-                <p class="small">Cocokkan simbol dan nama unsur kimia. AI akan menyesuaikan kesulitan berdasarkan performa kamu.</p>
-
-                <div class="d-flex justify-content-center align-items-center gap-2 mb-3">
-                    <label for="groupSelect" class="small">Pilih Golongan:</label>
-                    <select id="groupSelect" class="form-select form-select-sm" style="width: 150px;">
-                        <option value="all">Semua</option>
-                        <option value="1">Golongan 1 (Alkali)</option>
-                        <option value="2">Golongan 2 (Alkaline earth)</option>
-                        <option value="3">Golongan 3</option>
-                        <option value="4">Golongan 4</option>
-                        <option value="5">Golongan 5</option>
-                        <option value="6">Golongan 6</option>
-                        <option value="7">Golongan 7</option>
-                        <option value="8">Golongan 8</option>
-                        <option value="9">Golongan 9</option>
-                        <option value="10">Golongan 10</option>
-                        <option value="11">Golongan 11</option>
-                        <option value="12">Golongan 12</option>
-                        <option value="13">Golongan 13</option>
-                        <option value="14">Golongan 14</option>
-                        <option value="15">Golongan 15</option>
-                        <option value="16">Golongan 16</option>
-                        <option value="17">Golongan 17 (Halogen)</option>
-                        <option value="18">Golongan 18 (Gas Mulia)</option>
+        <div class="app" role="application">
+            <header>
+                <div>
+                    <h1>Memory Match — Periodic Elements (AI Adaptive, Full Table)</h1>
+                    <div class="small">Mode: All-unsur tersedia. AI akan menyesuaikan jumlah pasangan (DDA) agar pembelajaran tetap efektif.</div>
+                </div>
+                <div class="controls">
+                    <label class="small" for="mode">Mode</label>
+                    <select id="mode">
+                        <option value="all">All (progressive)</option>
+                        <option value="grouped">Per Golongan</option>
                     </select>
+                    <select id="groupSelect" style="display: none;"></select>
+                    <button id="startBtn">Mulai / Reset</button>
                 </div>
             </header>
 
-            <div class="d-flex justify-content-center gap-3 mb-3">
+            <div class="meta">
                 <div>Level: <span id="level">1</span></div>
                 <div>Moves: <span id="moves">0</span></div>
                 <div>Matched: <span id="matched">0</span>/<span id="totalPairs">0</span></div>
@@ -133,23 +184,13 @@
 
             <div id="ai-feedback">AI: Memantau performa kamu...</div>
 
-            <div id="board" class="board"></div>
-        </div>
+            <main>
+                <div id="board" class="board cols-6" aria-live="polite"></div>
+            </main>
 
-        <!-- Modal Bootstrap -->
-        <div class="modal fade" id="levelCompleteModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content text-center bg-dark text-white">
-                    <div class="modal-header border-secondary">
-                        <h5 class="modal-title">Level Selesai 🎉</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p id="levelResultText" class="mb-3"></p>
-                        <button type="button" class="btn btn-primary" id="okNextLevel">OK</button>
-                    </div>
-                </div>
-            </div>
+            <footer>
+                <div class="small">Petunjuk: Klik kartu untuk membalik. Jika kesulitan, tunggu AI menyesuaikan level. Mode "All" akan menampilkan subset unsur yang meningkat seiring level (agar tidak menampilkan 236 kartu sekaligus).</div>
+            </footer>
         </div>
 
         <script>
@@ -275,23 +316,7 @@
                 { z: 118, symbol: "Og", name: "Oganesson", group: 18, category: "Unknown" },
             ];
 
-            function getCategoryColor(category) {
-                const colors = {
-                    Nonmetal: "#60a5fa",
-                    "Noble gas": "#fbbf24",
-                    "Alkali metal": "#ef4444",
-                    "Alkaline earth": "#10b981",
-                    "Transition metal": "#f59e0b",
-                    "Post-transition": "#a855f7",
-                    Metalloid: "#ec4899",
-                    Halogen: "#22d3ee",
-                    Lanthanide: "#c084fc",
-                    Actinide: "#fb7185",
-                    Unknown: "#9ca3af",
-                };
-                return colors[category] || "#6b7280";
-            }
-
+            // App state
             let level = 1,
                 moves = 0,
                 matched = 0,
@@ -299,162 +324,248 @@
                 firstCard = null,
                 secondCard = null,
                 lockBoard = false;
-            let seconds = 0,
-                timerInterval = null;
+            let timerInterval = null,
+                seconds = 0;
 
-            const boardEl = $("#board"),
-                levelEl = $("#level"),
-                movesEl = $("#moves"),
-                matchedEl = $("#matched"),
-                totalPairsEl = $("#totalPairs"),
-                timeEl = $("#time"),
-                aiFeedback = $("#ai-feedback"),
-                groupSelect = $("#groupSelect");
+            const boardEl = document.getElementById("board");
+            const modeEl = document.getElementById("mode");
+            const groupEl = document.getElementById("groupSelect");
+            const startBtn = document.getElementById("startBtn");
+            const levelEl = document.getElementById("level");
+            const movesEl = document.getElementById("moves");
+            const matchedEl = document.getElementById("matched");
+            const totalPairsEl = document.getElementById("totalPairs");
+            const timeEl = document.getElementById("time");
+            const aiFeedback = document.getElementById("ai-feedback");
+
+            // Build group listing for 'Per Golongan' mode (by category)
+            const categories = Array.from(new Set(PERIODIC_ELEMENTS.map((e) => e.category))).sort();
+            categories.unshift("All");
+            categories.forEach((cat) => {
+                const opt = document.createElement("option");
+                opt.value = cat;
+                opt.textContent = cat;
+                groupEl.appendChild(opt);
+            });
+
+            modeEl.addEventListener("change", () => {
+                if (modeEl.value === "grouped") groupEl.style.display = "inline-block";
+                else groupEl.style.display = "none";
+                startGame();
+            });
+            groupEl.addEventListener("change", startGame);
 
             function startGame() {
                 resetState();
-
+                // determine available elements based on mode
                 let available = PERIODIC_ELEMENTS.slice();
-
-                const selectedGroup = groupSelect.val();
-                if (selectedGroup !== "all") {
-                    available = PERIODIC_ELEMENTS.filter((e) => e.group == parseInt(selectedGroup));
+                if (modeEl.value === "grouped" && groupEl.value && groupEl.value !== "All") {
+                    available = PERIODIC_ELEMENTS.filter((e) => e.category === groupEl.value);
                 }
 
 
-                const base = 4,
-                    perLevel = 2;
+                // DDA rule: choose number of pairs depending on level, but never exceed available
+                // base_pairs increases per level: level1=6, level2=12, level3=20, etc. (progressive)
 
-                    
-                /* const desiredPairs = Math.min(PERIODIC_ELEMENTS.length, base + (level - 1) * perLevel);
-                const selected = shuffle(PERIODIC_ELEMENTS).slice(0, desiredPairs); */
+                // const base = 6;
+                // const perLevel = 6;
+                // const desiredPairs = Math.min(available.length, base + (level - 1) * perLevel);
+
+                const base = 4;       // level 1 → 4 pasangan (8 kartu)
+                const perLevel = 2;   // naik 2 pasangan per level
                 const desiredPairs = Math.min(available.length, base + (level - 1) * perLevel);
+
+                // const difficultyScale = Math.max(1, level);
+                // const desiredPairs = Math.min(available.length, 4 + difficultyScale * 2);
+
+
+                // build deck: for each selected element create 'name' and 'symbol' cards
                 const selected = shuffle(available).slice(0, desiredPairs);
-
-
                 const deck = [];
                 selected.forEach((el) => {
-                    deck.push({ uid: el.z + "A", pairId: el.z, type: "name", content: el.name, symbol: el.symbol, category: el.category });
-                    deck.push({ uid: el.z + "B", pairId: el.z, type: "symbol", content: el.symbol, symbol: el.symbol, category: el.category });
+                    deck.push({ uid: el.z + "-A", pairId: el.z, type: "name", content: el.name, symbol: el.symbol });
+                    deck.push({ uid: el.z + "-B", pairId: el.z, type: "symbol", content: el.symbol, symbol: el.symbol });
                 });
 
                 totalPairs = desiredPairs;
-                totalPairsEl.text(totalPairs);
-                matchedEl.text(matched);
+                totalPairsEl.textContent = totalPairs;
+                matchedEl.textContent = matched;
                 const shuffledDeck = shuffle(deck);
-                const cols = Math.min(8, Math.max(4, Math.ceil(Math.sqrt(shuffledDeck.length))));
-                boardEl.css("grid-template-columns", `repeat(${cols},1fr)`);
+
+                // set responsive grid columns by deck size
+                const cols = Math.min(10, Math.max(4, Math.ceil(Math.sqrt(shuffledDeck.length))));
+                boardEl.className = "board cols-" + cols;
+
                 renderBoard(shuffledDeck);
                 startTimer();
             }
 
             function renderBoard(deck) {
-                boardEl.empty();
+                boardEl.innerHTML = "";
                 deck.forEach((card) => {
-                    const color = getCategoryColor(card.category);
-                    const cardHTML = `<div class='card' data-pairid='${card.pairId}'>
-          <div class='card-inner'>
-            <div class='face front'>?</div>
-            <div class='face back' style='background:${color}'>
-              <div><div class='symbol'>${card.symbol}</div><div class='name'>${card.content}</div></div>
+                    const wrapper = document.createElement("div");
+                    wrapper.className = "card";
+                    wrapper.dataset.uid = card.uid;
+                    wrapper.dataset.pairId = card.pairId;
+                    wrapper.innerHTML = `
+          <div class="card-inner">
+            <div class="face front small">?</div>
+            <div class="face back">
+              <div>
+                <div class="symbol">${escapeHtml(card.type === "symbol" ? card.content : card.symbol)}</div>
+                <div class="name">${escapeHtml(card.type === "name" ? card.content : card.type === "symbol" ? card.content : card.content)}</div>
+                <div class="hint small">${escapeHtml(card.type === "name" ? "" : "Simbol")}</div>
+              </div>
             </div>
-          </div>
-        </div>`;
-                    const $card = $(cardHTML);
-                    $card.on("click", () => onCardClick($card));
-                    boardEl.append($card);
+          </div>`;
+                    wrapper.addEventListener("click", () => onCardClick(wrapper));
+                    boardEl.appendChild(wrapper);
                 });
             }
 
-            function onCardClick($card) {
-                if (lockBoard || $card.hasClass("matched") || $card.is(firstCard)) return;
-                $card.addClass("flipped");
+            function onCardClick(wrapper) {
+                if (lockBoard || wrapper.classList.contains("matched") || wrapper === firstCard) return;
+                flip(wrapper);
                 if (!firstCard) {
-                    firstCard = $card;
+                    firstCard = wrapper;
                     return;
                 }
-                secondCard = $card;
+                secondCard = wrapper;
                 moves++;
-                movesEl.text(moves);
+                movesEl.textContent = moves;
                 checkForMatch();
             }
 
             function checkForMatch() {
-                const a = firstCard.data("pairid");
-                const b = secondCard.data("pairid");
+                const a = firstCard.dataset.pairId;
+                const b = secondCard.dataset.pairId;
                 if (a === b) {
-                    firstCard.addClass("matched");
-                    secondCard.addClass("matched");
+                    firstCard.classList.add("matched");
+                    secondCard.classList.add("matched");
                     matched++;
-                    matchedEl.text(matched);
+                    matchedEl.textContent = matched;
                     firstCard = null;
                     secondCard = null;
                     if (matched === totalPairs) winLevel();
                 } else {
                     lockBoard = true;
                     setTimeout(() => {
-                        firstCard.removeClass("flipped");
-                        secondCard.removeClass("flipped");
+                        unflip(firstCard);
+                        unflip(secondCard);
                         firstCard = null;
                         secondCard = null;
                         lockBoard = false;
-                    }, 800);
+                    }, 700);
                 }
             }
 
+            function flip(el) {
+                el.classList.add("flipped");
+            }
+            function unflip(el) {
+                el.classList.remove("flipped");
+            }
+
+            /* function winLevel() {
+                stopTimer();
+                setTimeout(() => {
+                    // show summary
+                    const msg = `Selamat! Kamu menyelesaikan level ${level} dengan ${moves} langkah dan waktu ${formatTime(seconds)}.`;
+                    // compute efficiency and let AI decide
+                    applyAdaptiveAI();
+                    // show short toast-like message (non-blocking)
+                    aiFeedback.textContent = aiFeedback.textContent + " — " + msg;
+                }, 200);
+            } */
             function winLevel() {
                 stopTimer();
-                const resultText = `Level <b>${level}</b> selesai!<br>Kamu menyelesaikan permainan dengan <b>${moves}</b> langkah<br>dan waktu <b>${formatTime(seconds)}</b>.`;
-                $("#levelResultText").html(resultText);
-                const modal = new bootstrap.Modal(document.getElementById("levelCompleteModal"));
-                modal.show();
-                $("#okNextLevel")
-                    .off("click")
-                    .on("click", () => {
-                        modal.hide();
-                        applyAdaptiveAI();
-                    });
+
+                // Buat popup custom (bukan alert bawaan)
+                const popup = document.createElement("div");
+                popup.style.position = "fixed";
+                popup.style.top = "0";
+                popup.style.left = "0";
+                popup.style.width = "100%";
+                popup.style.height = "100%";
+                popup.style.background = "rgba(0,0,0,0.7)";
+                popup.style.display = "flex";
+                popup.style.alignItems = "center";
+                popup.style.justifyContent = "center";
+                popup.style.zIndex = "9999";
+
+                const box = document.createElement("div");
+                box.style.background = "#1e293b";
+                box.style.padding = "20px 30px";
+                box.style.borderRadius = "12px";
+                box.style.textAlign = "center";
+                box.style.color = "#fff";
+                box.style.boxShadow = "0 0 20px rgba(0,0,0,0.5)";
+                box.innerHTML = `
+                    <h2>Level ${level} Selesai!</h2>
+                    <p>Kamu menyelesaikan permainan dengan <b>${moves}</b> langkah<br>dan waktu <b>${formatTime(seconds)}</b>.</p>
+                    <button id="okBtn">OK</button>
+                `;
+
+                const btn = box.querySelector("#okBtn");
+                btn.style.marginTop = "10px";
+                btn.style.padding = "8px 18px";
+                btn.style.border = "none";
+                btn.style.borderRadius = "6px";
+                btn.style.background = "#3b82f6";
+                btn.style.color = "white";
+                btn.style.cursor = "pointer";
+                btn.style.fontWeight = "bold";
+
+                btn.addEventListener("click", () => {
+                    document.body.removeChild(popup);
+                    applyAdaptiveAI(); // Jalankan evaluasi AI setelah tombol OK ditekan
+                });
+
+                popup.appendChild(box);
+                document.body.appendChild(popup);
             }
 
             function applyAdaptiveAI() {
+                // efficiency formula: matched pairs times factor over moves + time
                 const efficiency = (matched * 10) / (Math.max(1, moves) + seconds / 10);
-                let msg = "";
+                let message = "";
+                // adjust threshold adaptively based on board size
                 if (efficiency > 3.5 && level < 10) {
                     level++;
-                    msg = "AI: Hebat! Aku naikkan level untuk tantangan lebih.";
+                    message = "AI: Hebat! Aku naikkan level untuk tantangan lebih.";
                 } else if (efficiency < 1.2 && level > 1) {
                     level--;
-                    msg = "AI: Tenang, aku turunkan level supaya lebih mudah.";
+                    message = "AI: Tenang, aku turunkan level supaya lebih mudah.";
                 } else {
-                    msg = "AI: Stabil — lanjutkan latihan.";
+                    message = "AI: Stabil — lanjutkan latihan.";
                 }
-                aiFeedback.text(msg + ` (efisiensi: ${efficiency.toFixed(2)})`);
-                levelEl.text(level);
-
-                localStorage.setItem('playerLevel', level);
-                
+                aiFeedback.textContent = message + ` (efisiensi: ${efficiency.toFixed(2)})`;
+                levelEl.textContent = level;
+                // small delay so player can read message, then start next
                 setTimeout(startGame, 1200);
             }
 
             function resetState() {
                 clearInterval(timerInterval);
                 seconds = 0;
-                timeEl.text("00:00");
+                timeEl.textContent = "00:00";
                 firstCard = null;
                 secondCard = null;
                 lockBoard = false;
                 moves = 0;
                 matched = 0;
-                movesEl.text(moves);
-                matchedEl.text(matched);
+                movesEl.textContent = moves;
+                matchedEl.textContent = matched;
+                aiFeedback.textContent = "AI: Memantau performa kamu...";
             }
+
             function startTimer() {
                 clearInterval(timerInterval);
                 seconds = 0;
-                timeEl.text("00:00");
+                timeEl.textContent = formatTime(seconds);
                 timerInterval = setInterval(() => {
                     seconds++;
-                    timeEl.text(formatTime(seconds));
+                    timeEl.textContent = formatTime(seconds);
                 }, 1000);
             }
             function stopTimer() {
@@ -465,6 +576,7 @@
                 const sec = s % 60;
                 return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
             }
+
             function shuffle(a) {
                 const arr = a.slice();
                 for (let i = arr.length - 1; i > 0; i--) {
@@ -473,23 +585,14 @@
                 }
                 return arr;
             }
+            function escapeHtml(t) {
+                return String(t).replace(/[&<>\"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] || c));
+            }
 
-            $(document).ready(function() {
-                // Ambil level terakhir dari localStorage sebelum startGame dijalankan
-                const savedLevel = parseInt(localStorage.getItem('playerLevel'));
-                if (!isNaN(savedLevel) && savedLevel > 0) {
-                    level = savedLevel;
-                }
-
-                // Jalankan game setelah data level berhasil di-load
-                startGame();
-
-                levelEl.text(level);
-
-                // Event dropdown golongan
-                groupSelect.on("change", startGame);
-            });
-
+            startBtn.addEventListener("click", startGame);
+            levelEl.textContent = level;
+            // initial populate
+            startGame();
         </script>
     </body>
 </html>
