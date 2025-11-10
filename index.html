@@ -146,6 +146,13 @@
                     </div>
                     <div class="modal-body">
                         <p id="levelResultText" class="mb-3"></p>
+
+                        <!-- Tambahkan kontainer daftar unsur -->
+                        <div id="elementList" 
+                            class="text-start p-2 border rounded mb-3 bg-secondary bg-opacity-10" 
+                            style="max-height: 250px; overflow-y: auto; font-size: 14px;">
+                        </div>
+
                         <button type="button" class="btn btn-primary" id="okNextLevel">OK</button>
                     </div>
                 </div>
@@ -325,7 +332,7 @@
                 const base = 4,
                     perLevel = 2;
 
-                    
+
                 /* const desiredPairs = Math.min(PERIODIC_ELEMENTS.length, base + (level - 1) * perLevel);
                 const selected = shuffle(PERIODIC_ELEMENTS).slice(0, desiredPairs); */
                 const desiredPairs = Math.min(available.length, base + (level - 1) * perLevel);
@@ -406,6 +413,18 @@
                 stopTimer();
                 const resultText = `Level <b>${level}</b> selesai!<br>Kamu menyelesaikan permainan dengan <b>${moves}</b> langkah<br>dan waktu <b>${formatTime(seconds)}</b>.`;
                 $("#levelResultText").html(resultText);
+
+                // 🧩 Buat daftar unsur yang dimainkan di level ini
+                const selectedElements = $("#board .card").map(function() {
+                    const pairId = $(this).data("pairid");
+                    const element = PERIODIC_ELEMENTS.find(e => e.z === pairId);
+                    return element ? `<li>${element.symbol} - ${element.name} <span class="text-muted small">(${element.category})</span></li>` : '';
+                }).get();
+
+                // Hapus duplikat, urutkan, lalu tampilkan di modal
+                const uniqueElements = [...new Map(selectedElements.map(item => [item, item])).values()];
+                $("#elementList").html(`<ul class="mb-0">${uniqueElements.join('')}</ul>`);
+  
                 const modal = new bootstrap.Modal(document.getElementById("levelCompleteModal"));
                 modal.show();
                 $("#okNextLevel")
