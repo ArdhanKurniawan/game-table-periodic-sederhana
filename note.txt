@@ -1,0 +1,8 @@
+1. kartu harus acak di setiap device (done)
+2. Yang satu singkatan unsur kimia, yang 1 nya lagi kepanjangannya (Done)
+3. Setelah selesai, muncul popup "Selamat telah menyelesaikan ......" & ada button next. Ini digunakan agar user bisa menghafal lagi unsur kimia (Done)
+
+4. skor
+5. home page (input nama saja)
+6. music
+7. button reset
